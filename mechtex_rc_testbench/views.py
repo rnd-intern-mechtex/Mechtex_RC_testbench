@@ -7,7 +7,6 @@ class SetupPage(ttk.Frame):
         super().__init__(container)
         
         # required variables
-        self.loadcell_port = tk.StringVar()
         self.supply_port = tk.StringVar()
         self.arduino_port = tk.StringVar()
         self.numPoles = tk.IntVar()
@@ -69,12 +68,9 @@ class SetupPage(ttk.Frame):
         self.ports_frame.grid_rowconfigure([0, 1, 2, 3], weight=1)
         self.ports_frame.grid_columnconfigure([0, 1], weight=1)
         
-        ttk.Label(self.ports_frame, text='Load Cell').grid(row=0, column=0, padx=2, pady=2)
         ttk.Label(self.ports_frame, text='Power Supply').grid(row=1, column=0, padx=2, pady=2)
         ttk.Label(self.ports_frame, text='Arduino').grid(row=2, column=0, padx=2, pady=2)
         
-        self.loadcell_port_menu = ttk.OptionMenu(self.ports_frame, self.loadcell_port)
-        self.loadcell_port_menu.grid(row=0, column=1, padx=2, pady=2)
         self.supply_port_menu = ttk.OptionMenu(self.ports_frame, self.supply_port)
         self.supply_port_menu.grid(row=1, column=1, padx=2, pady=2)
         self.arduino_port_menu = ttk.OptionMenu(self.ports_frame, self.arduino_port)
@@ -223,7 +219,6 @@ class SetupPage(ttk.Frame):
         data['num_poles'] = self.numPoles.get()
         data['num_readings'] = self.numReadings.get()
         data['supply_port'] = self.supply_port.get()
-        data['loadcell_port'] = self.loadcell_port.get()
         data['arduino_port'] = self.arduino_port.get()
         data['max_voltage'] = self.maxV.get()
         data['max_current'] = self.maxI.get()

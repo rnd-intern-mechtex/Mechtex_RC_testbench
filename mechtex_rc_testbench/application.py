@@ -101,17 +101,11 @@ class Application(tk.Tk):
     # -------------------------------------------------------------------------------
     def setup__on_refresh(self):
         self.port_list = [port.device for port in comports()]
-        self.frames["setup"].loadcell_port.set('')
         self.frames["setup"].supply_port.set('')
         self.frames["setup"].arduino_port.set('')
-        self.frames["setup"].loadcell_port_menu['menu'].delete(0, 'end')
         self.frames["setup"].supply_port_menu['menu'].delete(0, 'end')
         self.frames["setup"].arduino_port_menu['menu'].delete(0, 'end')
         for choice in self.port_list:
-            self.frames["setup"].loadcell_port_menu['menu'].add_command(
-                label=choice,
-                command=tk._setit(self.frames["setup"].loadcell_port, choice)
-            )
             self.frames["setup"].supply_port_menu['menu'].add_command(
                 label=choice,
                 command=tk._setit(self.frames["setup"].supply_port, choice)
@@ -120,6 +114,7 @@ class Application(tk.Tk):
                 label=choice,
                 command=tk._setit(self.frames["setup"].arduino_port, choice)
             )
+        pass
         
     
     def setup__on_browse_src(self):
