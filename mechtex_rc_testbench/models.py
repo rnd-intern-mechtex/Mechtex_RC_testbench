@@ -87,6 +87,38 @@ class PowerSupply(serial.Serial):
 
 
 
+class Arduino(serial.Serial):
+    def __init__(self, comPort, avgValue):
+        super().__init__(comPort)
+        self.baudrate = 9600
+        self.stopbits = 1
+        self.bytesize = 8
+        self.parity = 'N'
+        self.averaging_value = avgValue
+        time.sleep(3)
+        
+        self.send_avgValue()
+    
+    def send_avgValue(self):
+        self.write(bytes(f'A{self.averaging_value}\n', encoding='ASCII'))
+    
+    def send_pwm(self, pwm_value):
+        self.write(bytes(f'P{pwm_value}\n', encoding='ASCII'))
+    
+    def getSensorValues(self):
+        
+        while self.read() != '\n':
+            pass
+        first_sensor_value = self.readline()
+        if first_sensor_value[0] == 'T':
+            self.thrust = first_sensor_value
+            self.rpm = self.readline()
+        else:
+            self.rpm = first_sensor_value
+            self.thrust = self.readline()
+
+
+
 # supply = PowerSupply('COM11')
 # supply.setVoltage(10.00)
 # supply.setCurrentLimit(5.00)

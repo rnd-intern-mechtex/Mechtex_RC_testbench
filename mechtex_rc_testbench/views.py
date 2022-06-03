@@ -343,6 +343,33 @@ class ManualPage(ttk.LabelFrame):
         self.dashboard.grid(row=2, column=6, sticky=tk.NSEW)
 
 
+class AutomatedPage(ttk.LabelFrame):
+    
+    def __init__(self, container, controller):
+        super().__init__(container)
+        
+        # -------------------------------------------------------------------------------
+        # Creating all auto frames
+        # -------------------------------------------------------------------------------
+        self.start_frame = ttk.Frame(self)
+        
+        # -------------------------------------------------------------------------------
+        # Creating buttons
+        # -------------------------------------------------------------------------------
+        self.start_button = ttk.Button(self.start_frame, text='START')
+        self.start_button.grid(row=0, column=2, padx=2, pady=2, ipadx=5, ipady=5)
+        self.stop_button = ttk.Button(self.start_frame, text='STOP')
+        self.stop_button.grid(row=0, column=4, padx=2, pady=2, ipadx=5, ipady=5)
+        self.back_button = ttk.Button(self.start_frame, text='BACK TO SETUP')
+        self.back_button.grid(row=0, column=6, padx=2, pady=2, ipadx=5, ipady=5)
+        
+        # -------------------------------------------------------------------------------
+        # Adding all auto frames to grid
+        # -------------------------------------------------------------------------------
+        self.start_frame.grid(row=0, column=2, sticky=tk.NSEW)
+        
+        
+
 # if __name__ == '__main__':
     # root = tk.Tk()
     # frame = ManualPage(root)

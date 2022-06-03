@@ -25,6 +25,7 @@ class Application(tk.Tk):
         # -------------------------------------------------------------------------------
         self.frames["setup"] = v.SetupPage(container, self)
         self.frames["manual"] = v.ManualPage(container, self)
+        self.frames["auto"] = v.AutomatedPage(container, self)
         
         # -------------------------------------------------------------------------------
         # Configuring all setup view functionalities
@@ -34,7 +35,10 @@ class Application(tk.Tk):
         self.frames["setup"].source_button.config(command=self.setup__on_browse_src)
         self.frames["setup"].destination_button.config(command=self.setup__on_browse_dest)
         self.frames["setup"].button_save.config(command=self.setup__on_save)
-        self.frames["setup"].button_auto.config(state=tk.DISABLED)
+        self.frames["setup"].button_auto.config(
+            state=tk.DISABLED,
+            command=self.setup__on_auto
+        )
         self.frames["setup"].button_manual.config(
             state=tk.DISABLED,
             command=self.setup__on_manual
@@ -43,16 +47,6 @@ class Application(tk.Tk):
         # -------------------------------------------------------------------------------
         # Configuring all manual view functionalities
         # -------------------------------------------------------------------------------
-        # Init GUI
-        self.frames["manual"].stop_button.config(
-            command=self.manual__on_stop,
-            state=tk.DISABLED
-        )
-        for widget in self.frames["manual"].pwm_frame.winfo_children():
-            widget.config(state=tk.DISABLED)
-        for widget in self.frames["manual"].voltage_frame.winfo_children():
-            widget.config(state=tk.DISABLED)
-        # adding functionalities for widgets
         self.current_slider_voltage = tk.DoubleVar()
         self.current_slider_pwm = tk.DoubleVar()
         self.current_entry_voltage = tk.DoubleVar()
@@ -61,7 +55,14 @@ class Application(tk.Tk):
         self.old_pwm = 1000
         self.current_slider_voltage.set(0)
         self.current_slider_pwm.set(1000)
-        
+        for widget in self.frames["manual"].pwm_frame.winfo_children():
+            widget.config(state=tk.DISABLED)
+        for widget in self.frames["manual"].voltage_frame.winfo_children():
+            widget.config(state=tk.DISABLED)
+        self.frames["manual"].stop_button.config(
+            command=self.manual__on_stop,
+            state=tk.DISABLED
+        )
         self.frames["manual"].back_button.config(command=self.manual__on_back)
         self.frames["manual"].start_button.config(command=self.manual__on_start)
         self.frames["manual"].voltage_slider.config(
@@ -82,6 +83,15 @@ class Application(tk.Tk):
         self.frames["manual"].voltage_entry.bind('<Return>', self.manual__on_volt_set)
         self.frames["manual"].pwm_entry.bind('<Return>', self.manual__on_pwm_set)
         
+        # -------------------------------------------------------------------------------
+        # Configuring all auto view functionalities
+        # -------------------------------------------------------------------------------
+        self.frames["auto"].stop_button.config(
+            command=self.auto__on_stop,
+            state=tk.DISABLED
+        )
+        self.frames["auto"].start_button.config(command=self.auto__on_start)
+        self.frames["auto"].back_button.config(command=self.auto__on_back)
         
         # -------------------------------------------------------------------------------
         # Adding all frames to the grid and finally displaying Setup Frame
@@ -89,6 +99,7 @@ class Application(tk.Tk):
         self.deiconify()
         self.frames["setup"].grid(row=0, column=0, sticky=tk.NSEW)
         self.frames["manual"].grid(row=0, column=0, sticky=tk.NSEW)
+        self.frames["auto"].grid(row=0, column=0, sticky=tk.NSEW)
         self.show_frame("setup")
         
         
@@ -136,6 +147,7 @@ class Application(tk.Tk):
         self.frames["setup"].button_manual.config(state=tk.DISABLED)
     
     def setup__on_auto(self):
+        self.show_frame("auto")
         self.frames["setup"].button_auto.config(state=tk.DISABLED)
         self.frames["setup"].button_manual.config(state=tk.DISABLED)
     
@@ -149,6 +161,8 @@ class Application(tk.Tk):
         # Set OVP, current limit
         self.supply.setVoltage(0)
         self.supply.turnOutputON()
+        self.arduino = m.Arduino(self.data['arduino_port'], self.data['num_readings'])
+        self.arduino.send_pwm(1000)
         
         # Update GUI
         self.frames["manual"].back_button.config(state=tk.DISABLED)
@@ -166,6 +180,8 @@ class Application(tk.Tk):
         self.current_slider_pwm.set(1000)
         self.supply.setVoltage(0)
         self.supply.close()
+        self.arduino.send_pwm(1000)
+        self.arduino.close()
         self.frames["manual"].back_button.config(state=tk.NORMAL)
         self.frames["manual"].stop_button.config(state=tk.DISABLED)
         self.frames["manual"].start_button.config(state=tk.NORMAL)
@@ -197,6 +213,7 @@ class Application(tk.Tk):
         self.current_slider_pwm.set(new_value)
         self.current_entry_pwm.set(new_value)
         # !!! Send PWM to Arduino here !!!
+        self.arduino.send_pwm(new_value)
         self.frames["manual"].pwm_slider.focus()
     
     def manual__on_pwm_set(self, event):
@@ -208,6 +225,7 @@ class Application(tk.Tk):
         self.current_slider_pwm.set(value)
         self.old_pwm = value
         # !!! Send PWM to Arduino Here !!!
+        self.arduino.send_pwm(value)
     
     def manual__on_volt_set(self, event):
         value = self.current_entry_voltage.get()
@@ -218,4 +236,21 @@ class Application(tk.Tk):
         self.current_slider_voltage.set(value)
         self.old_voltage = value
         self.supply.setVoltage(value)
+        
+        
+    # -------------------------------------------------------------------------------
+    # Functions for auto widgets
+    # -------------------------------------------------------------------------------
     
+    def auto__on_start(self):
+        self.frames["auto"].stop_button.config(state=tk.NORMAL)
+        self.frames["auto"].start_button.config(state=tk.DISABLED)
+        self.frames["auto"].back_button.config(state=tk.DISABLED)
+    
+    def auto__on_stop(self):
+        self.frames["auto"].back_button.config(state=tk.NORMAL)
+        self.frames["auto"].stop_button.config(state=tk.DISABLED)
+        self.frames["auto"].start_button.config(state=tk.NORMAL)
+    
+    def auto__on_back(self):
+        self.show_frame("setup")
