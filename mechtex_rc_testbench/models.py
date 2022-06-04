@@ -1,6 +1,9 @@
 import serial
 import time
 
+class Model:
+    pass
+
 class PowerSupply(serial.Serial):
     def __init__(self, comPort):
         super().__init__(comPort)
@@ -97,6 +100,10 @@ class Arduino(serial.Serial):
         self.averaging_value = avgValue
         time.sleep(3)
         
+        self.rpm = None
+        self.pwm = None
+        self.thrust = None
+        
         self.send_avgValue()
     
     def send_avgValue(self):
@@ -106,17 +113,22 @@ class Arduino(serial.Serial):
         self.write(bytes(f'P{pwm_value}\n', encoding='ASCII'))
     
     def getSensorValues(self):
-        
-        while self.read() != '\n':
+        self.reset_input_buffer()
+        while self.read() != bytes('\n', encoding='ascii'):
             pass
-        first_sensor_value = self.readline()
-        if first_sensor_value[0] == 'T':
-            self.thrust = first_sensor_value
-            self.rpm = self.readline()
-        else:
-            self.rpm = first_sensor_value
-            self.thrust = self.readline()
-
+        sensor_value = self.readline().decode('utf-8')
+        if sensor_value[0] == 'P':
+            self.pwm = sensor_value[1:-2]
+            self.thrust = self.readline()[1:-2]
+            self.rpm = self.readline()[1:-2]
+        elif sensor_value[0] == 'T':
+            self.thrust = sensor_value[1:-2]
+            self.rpm = self.readline()[1:-2]
+            self.pwm = self.readline()[1:-2]
+        elif sensor_value[0] == 'R':
+            self.rpm = sensor_value[1:-2]
+            self.pwm = self.readline()[1:-2]
+            self.thrust = self.readline()[1:-2]
 
 
 # supply = PowerSupply('COM11')

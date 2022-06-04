@@ -13,6 +13,7 @@ class Application(tk.Tk):
         self.title('Mechtex RC Testbench')
         
         self.port_list = []
+        self._handle = None
         
         container = ttk.Frame(self)
         container.pack(fill='both', side='top', expand=True)
@@ -63,6 +64,8 @@ class Application(tk.Tk):
             command=self.manual__on_stop,
             state=tk.DISABLED
         )
+        for val in self.frames["manual"].dashboard_values:
+            val.config(text = '-')
         self.frames["manual"].back_button.config(command=self.manual__on_back)
         self.frames["manual"].start_button.config(command=self.manual__on_start)
         self.frames["manual"].voltage_slider.config(
@@ -172,6 +175,8 @@ class Application(tk.Tk):
             widget.config(state=tk.NORMAL)
         self.frames["manual"].stop_button.config(state=tk.NORMAL)
         self.frames["manual"].start_button.config(state=tk.DISABLED)
+        
+        self.update_values()
     
     def manual__on_stop(self):
         self.current_entry_voltage.set(0)
@@ -179,8 +184,10 @@ class Application(tk.Tk):
         self.current_entry_pwm.set(1000)
         self.current_slider_pwm.set(1000)
         self.supply.setVoltage(0)
-        self.supply.close()
         self.arduino.send_pwm(1000)
+        self.after_cancel(self._handle)
+        self._handle = None
+        self.supply.close()
         self.arduino.close()
         self.frames["manual"].back_button.config(state=tk.NORMAL)
         self.frames["manual"].stop_button.config(state=tk.DISABLED)
@@ -189,6 +196,8 @@ class Application(tk.Tk):
             widget.config(state=tk.DISABLED)
         for widget in self.frames["manual"].voltage_frame.winfo_children():
             widget.config(state=tk.DISABLED)
+        for val in self.frames["manual"].dashboard_values:
+            val.config(text = '-')
     
     def manual__on_back(self):
         self.show_frame("setup")
@@ -254,3 +263,15 @@ class Application(tk.Tk):
     
     def auto__on_back(self):
         self.show_frame("setup")
+        
+    # -------------------------------------------------------------------------------
+    
+    # -------------------------------------------------------------------------------
+    def update_values(self):
+        self.arduino.getSensorValues()
+        self.frames["manual"].dash_rpm.config(text = self.arduino.rpm)
+        self.frames["manual"].dash_pwm.config(text = self.arduino.pwm)
+        self.frames["manual"].dash_thrust.config(text = self.arduino.thrust)
+        self.frames["manual"].dash_current.config(text = self.supply.getActualCurrent())
+        self.frames["manual"].dash_voltage.config(text = self.supply.getActualVoltage())
+        self._handle = self.after(500, lambda:self.update_values())

@@ -308,21 +308,23 @@ class ManualPage(ttk.LabelFrame):
         ttk.Label(self.dashboard, text='RPM: ').grid(
             row=10, column=2, padx=2, pady=2
         )
-        self.dash_voltage = ttk.Label(self.dashboard, text='').grid(
-            row=2, column=4, padx=2, pady=2
-        )
-        self.dash_pwm = ttk.Label(self.dashboard, text='').grid(
-            row=4, column=4, padx=2, pady=2
-        )
-        self.dash_current = ttk.Label(self.dashboard, text='').grid(
-            row=6, column=4, padx=2, pady=2
-        )
-        self.dash_thrust = ttk.Label(self.dashboard, text='').grid(
-            row=8, column=4, padx=2, pady=2
-        )
-        self.dash_rpm = ttk.Label(self.dashboard, text='').grid(
-            row=10, column=4, padx=2, pady=2
-        )
+        self.dashboard_values = []
+        self.dash_voltage = ttk.Label(self.dashboard, text='')
+        self.dash_voltage.grid(row=2, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_voltage)
+        self.dash_pwm = ttk.Label(self.dashboard, text='')
+        self.dash_pwm.grid(row=4, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_pwm)
+        self.dash_current = ttk.Label(self.dashboard, text='')
+        self.dash_current.grid(row=6, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_current)
+        self.dash_thrust = ttk.Label(self.dashboard, text='')
+        self.dash_thrust.grid(row=8, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_thrust)
+        self.dash_rpm = ttk.Label(self.dashboard, text='')
+        self.dash_rpm.grid(row=10, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_rpm)
+        
         
         # -------------------------------------------------------------------------------
         # Creating buttons

@@ -10,7 +10,7 @@ SoftwareSerial LoadCell(10, 11);
 uint16_t numSamples = 100;
 uint16_t currentPwm = 1000;
 float currentThrust = 0;
-uint8_t currentRPM = 0;
+uint32_t currentRPM = 0;
 uint8_t count = 0;
 bool msgReady = false;
 char message[50];
@@ -26,6 +26,7 @@ void setup() {
   while (Serial.available()) {
     Serial.read();
   }
+  Serial.flush();
 
   esc.write(map(currentPwm, 1000, 2000, 0, 180));
 
@@ -33,24 +34,23 @@ void setup() {
 
 void loop() {
 
-  if(msgReady) {
+  if (msgReady) {
     decode_message();
     msgReady = false;
   }
-  else while(Serial.available()) {
-    char c = Serial.read();
-    message[count++] = c;
-    if(c == '\n') {
-      message[count] = '\0';
-      count = 0;
-      msgReady = true;
+  else while (Serial.available()) {
+      char c = Serial.read();
+      message[count++] = c;
+      if (c == '\n') {
+        message[count] = '\0';
+        count = 0;
+        msgReady = true;
+      }
     }
-  }
 
-  // Get thrust, rpm
-  getAvgThrust();
-  getAvgRPM();
-  // Send thrust, rpm, pwm
+  currentThrust = 321.00;
+  currentRPM = 9870.0;
+
   Serial.println("P" + String(currentPwm));
   Serial.println("T" + String(currentThrust));
   Serial.println("R" + String(currentRPM));
@@ -117,7 +117,7 @@ float getRPM() {
 }
 
 void getAvgRPM() {
-  
+
 }
 
 /*__________HELPER FUNCTIONS_________________________________________*/
