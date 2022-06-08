@@ -19,6 +19,9 @@ class Model:
         self.db["thrust(gf)"] = None
         self.db["power(W)"] = None
         self.db["efficiency"] = None    # ???
+        
+        self.auto_delay = None
+        self.auto_pwm = None
     
     def update_efficiency(self):
         if self.db["thrust(gf)"] is None or self.db["power(W)"] is None:
@@ -46,9 +49,7 @@ class Model:
     
     def update_db(self):
         self.update_arduino_values()
-        print('Done updating arduino ...')
         self.update_supply_values()
-        print('Done updating supply ...')
         self.update_efficiency()
         
     
@@ -60,7 +61,17 @@ class Model:
             if newfile:
                 csvwriter.writeheader()
             csvwriter.writerow(self.db)
-
+    
+    def read_input_file(self):
+        self.auto_pwm = []
+        self.auto_delay = []
+        with open(self.source_file, 'r') as fh:
+            csvreader = csv.DictReader(fh)
+            for col in csvreader:
+                self.auto_pwm.append(col['PWM'])
+                self.auto_delay.append(col['Delay'])
+        print(self.auto_pwm)
+        print(self.auto_delay)
 
 class PowerSupply(serial.Serial):
     def __init__(self, comPort):

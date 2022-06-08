@@ -5,6 +5,7 @@ from serial.tools.list_ports import comports
 from threading import Thread
 from . import views as v
 from . import models as m
+from time import sleep
 
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -14,6 +15,7 @@ class Application(tk.Tk):
         
         self.port_list = []
         self._handle = None
+        self._auto_handle = None
 
         # -------------------------------------------------------------------------------
         # Creating the main frame
@@ -153,12 +155,14 @@ class Application(tk.Tk):
         self.frames["setup"].button_manual.config(state=tk.NORMAL)
     
     def setup__on_manual(self):
-        self.show_frame("manual")
+        self.current_frame = "manual"
+        self.show_frame(self.current_frame)
         self.frames["setup"].button_auto.config(state=tk.DISABLED)
         self.frames["setup"].button_manual.config(state=tk.DISABLED)
     
     def setup__on_auto(self):
-        self.show_frame("auto")
+        self.current_frame = "auto"
+        self.show_frame(self.current_frame)
         self.frames["setup"].button_auto.config(state=tk.DISABLED)
         self.frames["setup"].button_manual.config(state=tk.DISABLED)
     
@@ -194,8 +198,6 @@ class Application(tk.Tk):
         self.supply.setVoltage(0)
         self.arduino.send_pwm(1000)
         self.cancel_update()
-        print('cancelled')
-        print('came out of this while loop')
         self.supply.close()
         self.arduino.close()
         print('closed ports ...')
@@ -280,14 +282,48 @@ class Application(tk.Tk):
         self.frames["auto"].stop_button.config(state=tk.NORMAL)
         self.frames["auto"].start_button.config(state=tk.DISABLED)
         self.frames["auto"].back_button.config(state=tk.DISABLED)
+        
+        self.model.read_input_file()
+        
+        self._handle = self.after(1, self.update_GUI)
+        self._auto_handle = True
+        self.auto_thread = Thread(target=self.auto__loop)
+        self.auto_thread.start()
     
     def auto__on_stop(self):
+    
+        self._auto_handle = None
+        self.cancel_update()
+        self.supply.setVoltage(0)
+        self.arduino.send_pwm(1000)
+        self.supply.close()
+        self.arduino.close()
+        self.frames[self.current_frame].pwm_label.config(text='')
+        self.frames[self.current_frame].delay_label.config(text='')
+        
         self.frames["auto"].back_button.config(state=tk.NORMAL)
         self.frames["auto"].stop_button.config(state=tk.DISABLED)
         self.frames["auto"].start_button.config(state=tk.NORMAL)
     
     def auto__on_back(self):
         self.show_frame("setup")
+        
+    
+    def auto__loop(self):
+        for i in range(len(self.model.auto_pwm)):
+            if self._auto_handle is not None:
+                if i==0:
+                    self.frames[self.current_frame].delay_label.config(text='STARTING ...')
+                    sleep(8)
+                print('Entered autoloop')
+                self.arduino.send_pwm(self.model.auto_pwm[i])
+                pwm_text = f'PWM value {self.model.auto_pwm[i]} sent'
+                delay_text = f'Waiting for {self.model.auto_delay[i]}s'
+                self.frames[self.current_frame].pwm_label.config(text=pwm_text)
+                self.frames[self.current_frame].delay_label.config(text=delay_text)
+                sleep(int(self.model.auto_delay[i]))
+            else:
+                return
         
     # -------------------------------------------------------------------------------
     # COMMON FUNCTIONS
@@ -310,12 +346,12 @@ class Application(tk.Tk):
         
         self.model.update_db()
         
-        self.frames["manual"].dash_voltage.config(text=self.model.voltage)
-        self.frames["manual"].dash_current.config(text=self.model.current)
-        self.frames["manual"].dash_pwm.config(text=self.model.db['pwm'])
-        self.frames["manual"].dash_rpm.config(text=self.model.db['rpm'])
-        self.frames["manual"].dash_thrust.config(text=self.model.db['thrust(gf)'])
-        self.frames["manual"].dash_power.config(text=self.model.power)
+        self.frames[self.current_frame].dash_voltage.config(text=self.model.voltage)
+        self.frames[self.current_frame].dash_current.config(text=self.model.current)
+        self.frames[self.current_frame].dash_pwm.config(text=self.model.db['pwm'])
+        self.frames[self.current_frame].dash_rpm.config(text=self.model.db['rpm'])
+        self.frames[self.current_frame].dash_thrust.config(text=self.model.db['thrust(gf)'])
+        self.frames[self.current_frame].dash_power.config(text=self.model.power)
         #append to file
         self.model.append_dest_file()
         

@@ -384,7 +384,7 @@ class AutomatedPage(ttk.LabelFrame):
         # -------------------------------------------------------------------------------
         # Creating message frame
         # -------------------------------------------------------------------------------
-        self.msg_frame.grid_rowconfigure(0, weight=1)
+        self.msg_frame.grid_rowconfigure([0, 1], weight=1)
         self.msg_frame.grid_columnconfigure(0, weight=1)
         
         self.pwm_label = ttk.Label(self.msg_frame, text='')
