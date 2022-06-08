@@ -234,8 +234,8 @@ class ManualPage(ttk.LabelFrame):
     # !!! Add controller
     def __init__(self, container, controller):
         super().__init__(container)
-        self.grid_rowconfigure(2, weight=1)
-        self.grid_columnconfigure([2, 4, 6], weight=1)
+        self.grid_rowconfigure([2, 3], weight=1)
+        self.grid_columnconfigure([2, 6], weight=1)
         
         # -------------------------------------------------------------------------------
         # Creating all Manual Frames
@@ -258,7 +258,7 @@ class ManualPage(ttk.LabelFrame):
             from_=2000,
             to=1000,
             value=1000,
-            orient='vertical'
+            orient='horizontal'
         )
         self.pwm_slider.grid(row=0, column=0, columnspan=2, padx=2, pady=2, sticky=tk.NS)
         self.pwm_entry = ttk.Entry(self.pwm_frame, width=10)
@@ -278,7 +278,7 @@ class ManualPage(ttk.LabelFrame):
             from_=80,
             to=0,
             value=0,
-            orient='vertical'
+            orient='horizontal'
         )
         self.voltage_slider.grid(row=0, column=0, columnspan=2, padx=2, pady=2, sticky=tk.NS)
         self.voltage_entry = ttk.Entry(self.voltage_frame, width=10)
@@ -344,10 +344,10 @@ class ManualPage(ttk.LabelFrame):
         # -------------------------------------------------------------------------------
         # Adding all manual frames to grid
         # -------------------------------------------------------------------------------
-        self.start_frame.grid(row=0, column=2, columnspan=3, sticky=tk.NSEW)
+        self.start_frame.grid(row=0, column=2, columnspan=2, sticky=tk.NSEW)
         self.pwm_frame.grid(row=2, column=2, sticky=tk.NSEW)
-        self.voltage_frame.grid(row=2, column=4, sticky=tk.NSEW)
-        self.dashboard.grid(row=2, column=6, sticky=tk.NSEW)
+        self.voltage_frame.grid(row=3, column=2, sticky=tk.NSEW)
+        self.dashboard.grid(row=2, column=6, rowspan=2, sticky=tk.NSEW)
 
 
 class AutomatedPage(ttk.LabelFrame):
