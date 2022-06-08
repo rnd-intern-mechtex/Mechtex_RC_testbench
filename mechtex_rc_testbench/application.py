@@ -18,18 +18,18 @@ class Application(tk.Tk):
         # -------------------------------------------------------------------------------
         # Creating the main frame
         # -------------------------------------------------------------------------------
-        container = ttk.Frame(self)
-        container.pack(fill='both', side='top', expand=True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)        
+        self.container = ttk.Frame(self)
+        self.container.pack(fill='both', side='top', expand=True)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)        
         self.frames = {}
         
         # -------------------------------------------------------------------------------
         # Creating all the views
         # -------------------------------------------------------------------------------
-        self.frames["setup"] = v.SetupPage(container, self)
-        self.frames["manual"] = v.ManualPage(container, self)
-        self.frames["auto"] = v.AutomatedPage(container, self)
+        self.frames["setup"] = v.SetupPage(self.container, self)
+        self.frames["manual"] = v.ManualPage(self.container, self)
+        self.frames["auto"] = v.AutomatedPage(self.container, self)
         
         # -------------------------------------------------------------------------------
         # SETUP VIEW INIT
@@ -138,7 +138,6 @@ class Application(tk.Tk):
                 label=choice,
                 command=tk._setit(self.frames["setup"].arduino_port, choice)
             )
-        pass
         
     
     def setup__on_browse_src(self):
@@ -150,7 +149,6 @@ class Application(tk.Tk):
     def setup__on_save(self):
         # check if all com ports are different
         self.data = self.frames["setup"].getData()
-        print(self.data)
         self.frames["setup"].button_auto.config(state=tk.NORMAL)
         self.frames["setup"].button_manual.config(state=tk.NORMAL)
     
@@ -168,7 +166,6 @@ class Application(tk.Tk):
     # Functions for manual view widgets
     # -------------------------------------------------------------------------------
     def manual__on_start(self):
-        
         # Open power supply port, set OVP, current limit
         # turn output ON
         self.supply = m.PowerSupply(self.data['supply_port'])
@@ -179,6 +176,7 @@ class Application(tk.Tk):
         # Open arduino port
         self.arduino = m.Arduino(self.data['arduino_port'], self.data['num_readings'])
         self.arduino.send_pwm(1000)
+        self.model = m.Model(self.data['source_file'], self.data['dest_file'], self.supply, self.arduino)
         
         # Update GUI
         self.frames["manual"].back_button.config(state=tk.DISABLED)
@@ -188,15 +186,19 @@ class Application(tk.Tk):
             widget.config(state=tk.NORMAL)
         self.frames["manual"].stop_button.config(state=tk.NORMAL)
         self.frames["manual"].start_button.config(state=tk.DISABLED)
-        self._handle = self.after(1, self.update_values)
+        
+        # Start updating values
+        self._handle = self.after(1, self.update_GUI)
     
     def manual__on_stop(self):
         self.supply.setVoltage(0)
         self.arduino.send_pwm(1000)
-        self.after_cancel(self._handle)
-        self._handle = None
+        self.cancel_update()
+        print('cancelled')
+        print('came out of this while loop')
         self.supply.close()
         self.arduino.close()
+        print('closed ports ...')
         self.entry_voltage.set(0)
         self.slider_voltage.set(0)
         self.entry_pwm.set(1000)
@@ -264,6 +266,17 @@ class Application(tk.Tk):
     # -------------------------------------------------------------------------------
     
     def auto__on_start(self):
+        
+        self.supply = m.PowerSupply(self.data['supply_port'])
+        self.supply.setOVP(self.data['max_voltage'])
+        self.supply.setCurrentLimit("{0:.3f}".format(self.data["max_current"]/1000))
+        self.supply.setVoltage(self.frames['auto'].required_voltage.get())
+        self.supply.turnOutputON()
+        # Open arduino port
+        self.arduino = m.Arduino(self.data['arduino_port'], self.data['num_readings'])
+        self.arduino.send_pwm(1000)
+        self.model = m.Model(self.data['source_file'], self.data['dest_file'], self.supply, self.arduino)
+        
         self.frames["auto"].stop_button.config(state=tk.NORMAL)
         self.frames["auto"].start_button.config(state=tk.DISABLED)
         self.frames["auto"].back_button.config(state=tk.DISABLED)
@@ -280,17 +293,30 @@ class Application(tk.Tk):
     # COMMON FUNCTIONS
     # -------------------------------------------------------------------------------
     
-    def update_values(self):
+    def update_GUI(self):
         if self._handle is not None:
-            self.update_thread = Thread(target=self.get_values)
+            self.update_thread = Thread(target=self.update_db)
             self.update_thread.start()
-            self._handle = self.after(250, self.update_values)
+            self._handle = self.after(500, self.update_GUI)
+        return
     
-    def get_values(self):
-        self.arduino.getSensorValues()
-        self.frames["manual"].dash_rpm.config(text = self.arduino.rpm)
-        self.frames["manual"].dash_pwm.config(text = self.arduino.pwm)
-        self.frames["manual"].dash_thrust.config(text = self.arduino.thrust)
-        self.frames["manual"].dash_current.config(text = self.supply.getActualCurrent())
-        self.frames["manual"].dash_voltage.config(text = self.supply.getActualVoltage())
+    def cancel_update(self):
+        if self._handle is not None:
+            self.after_cancel(self._handle)
+            self._handle = None
+
+    def update_db(self):
+        # !!! Update Time here
+        
+        self.model.update_db()
+        
+        self.frames["manual"].dash_voltage.config(text=self.model.voltage)
+        self.frames["manual"].dash_current.config(text=self.model.current)
+        self.frames["manual"].dash_pwm.config(text=self.model.db['pwm'])
+        self.frames["manual"].dash_rpm.config(text=self.model.db['rpm'])
+        self.frames["manual"].dash_thrust.config(text=self.model.db['thrust(gf)'])
+        self.frames["manual"].dash_power.config(text=self.model.power)
+        #append to file
+        self.model.append_dest_file()
+        
         

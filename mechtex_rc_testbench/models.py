@@ -1,8 +1,66 @@
+import csv
+import os
 import serial
 import time
 
 class Model:
-    pass
+    def __init__(self, src_file, dest_file, supply, arduino):
+        self.source_file = src_file
+        self.dest_file = dest_file
+        self.arduino = arduino
+        self.supply = supply
+        
+        self.db = {}
+        self.db["time(ms)"] = None  # ???
+        self.db["voltage(V)"] = None
+        self.db["pwm"] = None
+        self.db["current(A)"] = None
+        self.db["rpm"] = None
+        self.db["thrust(gf)"] = None
+        self.db["power(W)"] = None
+        self.db["efficiency"] = None    # ???
+    
+    def update_efficiency(self):
+        if self.db["thrust(gf)"] is None or self.db["power(W)"] is None:
+            self.db['efficiency'] = '-'
+            return
+        try:
+            self.db["efficiency"] = self.db["thrust(gf)"] / self.db["power(W)"]
+        except ZeroDivisionError:
+            self.db["efficiency"] = '-'
+        
+    def update_arduino_values(self):
+        self.arduino.reset_input_buffer()
+        self.db['pwm'] = self.arduino.getPwm()
+        self.db['thrust(gf)'] = self.arduino.getThrust()
+        self.db['rpm'] = self.arduino.getRpm()
+    
+    def update_supply_values(self):
+        self.supply.reset_input_buffer()
+        self.voltage = self.supply.getActualVoltage()
+        self.current = self.supply.getActualCurrent()
+        self.power = self.supply.getPower()
+        self.db['voltage(V)'] = float(self.voltage[:-3])
+        self.db['current(A)'] = float(self.current[:-3])
+        self.db['power(W)'] = float(self.power[:-3])
+    
+    def update_db(self):
+        self.update_arduino_values()
+        print('Done updating arduino ...')
+        self.update_supply_values()
+        print('Done updating supply ...')
+        self.update_efficiency()
+        
+    
+    def append_dest_file(self):
+        
+        newfile = not os.path.exists(self.dest_file)
+        with open(self.dest_file, 'a') as fh:
+            csvwriter = csv.DictWriter(fh, fieldnames=self.db.keys())
+            if newfile:
+                csvwriter.writeheader()
+            csvwriter.writerow(self.db)
+
 
 class PowerSupply(serial.Serial):
     def __init__(self, comPort):
@@ -80,6 +138,10 @@ class PowerSupply(serial.Serial):
         self.write(b'MEAS:CURR?')
         return self._getResponse()
     
+    def getPower(self):
+        self.write(b'MEAS:POW?')
+        return self._getResponse()
+    
     # Private methods
     def _getResponse(self):
         received_message = b''
@@ -100,10 +162,6 @@ class Arduino(serial.Serial):
         self.averaging_value = avgValue
         time.sleep(3)
         
-        self.rpm = None
-        self.pwm = None
-        self.thrust = None
-        
         self.send_avgValue()
     
     def send_avgValue(self):
@@ -112,28 +170,21 @@ class Arduino(serial.Serial):
     def send_pwm(self, pwm_value):
         self.write(bytes(f'P{pwm_value}\n', encoding='ASCII'))
     
-    def getSensorValues(self):
-        self.reset_input_buffer()
-        while self.read() != bytes('\n', encoding='ascii'):
-            pass
-        sensor_value = self.readline().decode('utf-8')
-        if sensor_value[0] == 'P':
-            self.pwm = sensor_value[1:-2]
-            self.thrust = self.readline()[1:-2]
-            self.rpm = self.readline()[1:-2]
-        elif sensor_value[0] == 'T':
-            self.thrust = sensor_value[1:-2]
-            self.rpm = self.readline()[1:-2]
-            self.pwm = self.readline()[1:-2]
-        elif sensor_value[0] == 'R':
-            self.rpm = sensor_value[1:-2]
-            self.pwm = self.readline()[1:-2]
-            self.thrust = self.readline()[1:-2]
-
-
-# supply = PowerSupply('COM11')
-# supply.setVoltage(10.00)
-# supply.setCurrentLimit(5.00)
-# time.sleep(3)
-# print(supply.getCurrentLimit())
-# print(supply.getActualCurrent())
+    def getPwm(self):
+        self.write(b'X\n')
+        response = self.readline().decode('utf-8')
+        if response[0] == 'P':
+            return int(response[1:-1])
+        
+    
+    def getThrust(self):
+        self.write(b'T\n')
+        response = self.readline().decode('utf-8')
+        if response[0] == 'T':
+            return float(response[1:-1])
+        
+    def getRpm(self):
+        self.write(b'R\n')
+        response = self.readline().decode('utf-8')
+        if response[0] == 'R':
+            return int(response[1:-1])

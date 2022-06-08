@@ -290,7 +290,7 @@ class ManualPage(ttk.LabelFrame):
         # Creating dashboard
         # -------------------------------------------------------------------------------
         # configuring rows and columns
-        self.dashboard.grid_rowconfigure([2, 4, 6, 8, 10], weight=1)
+        self.dashboard.grid_rowconfigure([2, 4, 6, 8, 10, 12], weight=1)
         self.dashboard.grid_columnconfigure([2, 4], weight=1)
         
         ttk.Label(self.dashboard, text='Voltage: ').grid(
@@ -308,6 +308,9 @@ class ManualPage(ttk.LabelFrame):
         ttk.Label(self.dashboard, text='RPM: ').grid(
             row=10, column=2, padx=2, pady=2
         )
+        ttk.Label(self.dashboard, text='Power: ').grid(
+            row=12, column=2, padx=2, pady=2
+        )
         self.dashboard_values = []
         self.dash_voltage = ttk.Label(self.dashboard, text='')
         self.dash_voltage.grid(row=2, column=4, padx=2, pady=2)
@@ -324,6 +327,8 @@ class ManualPage(ttk.LabelFrame):
         self.dash_rpm = ttk.Label(self.dashboard, text='')
         self.dash_rpm.grid(row=10, column=4, padx=2, pady=2)
         self.dashboard_values.append(self.dash_rpm)
+        self.dash_power = ttk.Label(self.dashboard, text = '')
+        self.dash_power.grid(row=12, column=4, padx=2, pady=2)
         
         
         # -------------------------------------------------------------------------------
@@ -350,26 +355,92 @@ class AutomatedPage(ttk.LabelFrame):
     def __init__(self, container, controller):
         super().__init__(container)
         
+        self.required_voltage = tk.DoubleVar()
+        
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure([2, 4], weight=1)
+        
         # -------------------------------------------------------------------------------
         # Creating all auto frames
         # -------------------------------------------------------------------------------
         self.start_frame = ttk.Frame(self)
+        self.msg_frame = ttk.LabelFrame(self, text='Info')
+        self.dashboard = ttk.LabelFrame(self, text='Dashboard')
         
         # -------------------------------------------------------------------------------
         # Creating buttons
         # -------------------------------------------------------------------------------
+        self.voltage_label = ttk.Label(self.start_frame, text='Enter voltage: ')
+        self.voltage_label.grid(row=0, column=2, padx=2, pady=2, ipadx=2, ipady=2)
+        self.voltage_entry = ttk.Entry(self.start_frame, width=20, textvariable=self.required_voltage)
+        self.voltage_entry.grid(row=0, column=3, padx=2, pady=2)
         self.start_button = ttk.Button(self.start_frame, text='START')
-        self.start_button.grid(row=0, column=2, padx=2, pady=2, ipadx=5, ipady=5)
+        self.start_button.grid(row=0, column=4, padx=2, pady=2, ipadx=5, ipady=5)
         self.stop_button = ttk.Button(self.start_frame, text='STOP')
-        self.stop_button.grid(row=0, column=4, padx=2, pady=2, ipadx=5, ipady=5)
+        self.stop_button.grid(row=0, column=6, padx=2, pady=2, ipadx=5, ipady=5)
         self.back_button = ttk.Button(self.start_frame, text='BACK TO SETUP')
-        self.back_button.grid(row=0, column=6, padx=2, pady=2, ipadx=5, ipady=5)
+        self.back_button.grid(row=0, column=8, padx=2, pady=2, ipadx=5, ipady=5)
+        
+        # -------------------------------------------------------------------------------
+        # Creating message frame
+        # -------------------------------------------------------------------------------
+        self.msg_frame.grid_rowconfigure(0, weight=1)
+        self.msg_frame.grid_columnconfigure(0, weight=1)
+        
+        self.pwm_label = ttk.Label(self.msg_frame, text='')
+        self.pwm_label.grid(row=0, column=0, padx=2, pady=2)
+        self.delay_label = ttk.Label(self.msg_frame, text='')
+        self.delay_label.grid(row=1, column=0, padx=2, pady=2)
+        # -------------------------------------------------------------------------------
+        # Creating dashboard
+        # -------------------------------------------------------------------------------
+        # configuring rows and columns
+        self.dashboard.grid_rowconfigure([2, 4, 6, 8, 10, 12], weight=1)
+        self.dashboard.grid_columnconfigure([2, 4], weight=1)
+        
+        ttk.Label(self.dashboard, text='Voltage: ').grid(
+            row=2, column=2, padx=2, pady=2
+        )
+        ttk.Label(self.dashboard, text='PWM: ').grid(
+            row=4, column=2, padx=2, pady=2
+        )
+        ttk.Label(self.dashboard, text='Current: ').grid(
+            row=6, column=2, padx=2, pady=2
+        )
+        ttk.Label(self.dashboard, text='Thrust: ').grid(
+            row=8, column=2, padx=2, pady=2
+        )
+        ttk.Label(self.dashboard, text='RPM: ').grid(
+            row=10, column=2, padx=2, pady=2
+        )
+        ttk.Label(self.dashboard, text='Power: ').grid(
+            row=12, column=2, padx=2, pady=2
+        )
+        self.dashboard_values = []
+        self.dash_voltage = ttk.Label(self.dashboard, text='')
+        self.dash_voltage.grid(row=2, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_voltage)
+        self.dash_pwm = ttk.Label(self.dashboard, text='')
+        self.dash_pwm.grid(row=4, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_pwm)
+        self.dash_current = ttk.Label(self.dashboard, text='')
+        self.dash_current.grid(row=6, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_current)
+        self.dash_thrust = ttk.Label(self.dashboard, text='')
+        self.dash_thrust.grid(row=8, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_thrust)
+        self.dash_rpm = ttk.Label(self.dashboard, text='')
+        self.dash_rpm.grid(row=10, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_rpm)
+        self.dash_power = ttk.Label(self.dashboard, text = '')
+        self.dash_power.grid(row=12, column=4, padx=2, pady=2)
         
         # -------------------------------------------------------------------------------
         # Adding all auto frames to grid
         # -------------------------------------------------------------------------------
         self.start_frame.grid(row=0, column=2, sticky=tk.NSEW)
-        
+        self.msg_frame.grid(row=1, column=2, sticky=tk.NSEW)
+        self.dashboard.grid(row=1, column=4, sticky=tk.NSEW)
         
 
 # if __name__ == '__main__':

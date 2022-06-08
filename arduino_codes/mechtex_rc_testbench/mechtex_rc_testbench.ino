@@ -51,10 +51,7 @@ void loop() {
   currentThrust = 321.00;
   currentRPM = 9870.0;
 
-  Serial.println("P" + String(currentPwm));
-  Serial.println("T" + String(currentThrust));
-  Serial.println("R" + String(currentRPM));
-  Serial.flush();
+  
 
 }
 
@@ -69,6 +66,15 @@ void decode_message() {
     case 'P':
       setPwm(atoi(&message[1]));
       break;
+    case 'T':
+      // return thrust
+      Serial.print("T" + String(currentThrust) + "\n");
+    case 'R':
+      // return rpm
+      Serial.print("R" + String(currentRPM) + "\n");
+    case 'X':
+      // return pwm
+      Serial.print("P" + String(currentPwm) + "\n");
   }
 }
 
