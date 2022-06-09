@@ -11,7 +11,7 @@ class Model:
         self.supply = supply
         
         self.db = {}
-        self.db["time(ms)"] = None  # ???
+        self.db["time(s)"] = None  # ???
         self.db["voltage(V)"] = None
         self.db["pwm"] = None
         self.db["current(A)"] = None

@@ -255,8 +255,8 @@ class ManualPage(ttk.LabelFrame):
         self.pwm_slider = ttk.Scale(
             self.pwm_frame,
             length=300,
-            from_=2000,
-            to=1000,
+            from_=1000,
+            to=2000,
             value=1000,
             orient='horizontal'
         )
@@ -275,8 +275,8 @@ class ManualPage(ttk.LabelFrame):
         self.voltage_slider = ttk.Scale(
             self.voltage_frame,
             length=300,
-            from_=80,
-            to=0,
+            from_=0,
+            to=80,
             value=0,
             orient='horizontal'
         )
@@ -444,7 +444,11 @@ class AutomatedPage(ttk.LabelFrame):
         
 
 class GraphFrame(ttk.Frame):
-    pass
+    def __init__(self, container):
+        super().__init__(container)
+        
+    
+        
 
 
 # if __name__ == '__main__':

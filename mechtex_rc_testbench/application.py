@@ -5,7 +5,7 @@ from serial.tools.list_ports import comports
 from threading import Thread
 from . import views as v
 from . import models as m
-from time import sleep
+from time import sleep, perf_counter
 
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -285,6 +285,7 @@ class Application(tk.Tk):
         
         self.model.read_input_file()
         
+        self.start_time = perf_counter()
         self._handle = self.after(1, self.update_GUI)
         self._auto_handle = True
         self.auto_thread = Thread(target=self.auto__loop)
@@ -333,7 +334,7 @@ class Application(tk.Tk):
         if self._handle is not None:
             self.update_thread = Thread(target=self.update_db)
             self.update_thread.start()
-            self._handle = self.after(500, self.update_GUI)
+            self._handle = self.after(200, self.update_GUI)
         return
     
     def cancel_update(self):
@@ -342,8 +343,8 @@ class Application(tk.Tk):
             self._handle = None
 
     def update_db(self):
-        # !!! Update Time here
-        
+        # !!! Format time to 3 decimal places !!!
+        self.model.db["time(s)"] = perf_counter() - self.start_time
         self.model.update_db()
         
         self.frames[self.current_frame].dash_voltage.config(text=self.model.voltage)
