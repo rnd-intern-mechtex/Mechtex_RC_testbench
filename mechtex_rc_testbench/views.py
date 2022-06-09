@@ -443,6 +443,10 @@ class AutomatedPage(ttk.LabelFrame):
         self.dashboard.grid(row=1, column=4, sticky=tk.NSEW)
         
 
+class GraphFrame(ttk.Frame):
+    pass
+
+
 # if __name__ == '__main__':
     # root = tk.Tk()
     # frame = ManualPage(root)
