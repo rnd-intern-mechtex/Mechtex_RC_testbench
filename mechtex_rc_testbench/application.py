@@ -1,11 +1,14 @@
-from threading import Thread
-from time import perf_counter, sleep
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
+
 from serial.tools.list_ports import comports
+from threading import Thread
+from time import perf_counter, sleep
+
 from mechtex_rc_testbench.views import AutomatedPage, ManualPage, SetupPage
 from mechtex_rc_testbench.models import Arduino, Model, PowerSupply
+
 
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -29,9 +32,9 @@ class Application(tk.Tk):
         # CREATING ALL VIEWS
         # -------------------------------------------------------------------------------
         self.frames = {}
-        self.frames['setup'] = SetupPage(self.container, self)
-        self.frames['manual'] = ManualPage(self.container, self)
-        self.frames['auto'] = AutomatedPage(self.container, self)
+        self.frames['setup'] = SetupPage(self.container)
+        self.frames['manual'] = ManualPage(self.container)
+        self.frames['auto'] = AutomatedPage(self.container)
 
         # -------------------------------------------------------------------------------
         # SETUP VIEW WIDGETS CONFIGURATION
@@ -73,6 +76,14 @@ class Application(tk.Tk):
         self.frames['manual'].voltage_button.bind('<Button-1>', self.manual__on_v_set)
         self.frames['manual'].pwm_button.bind('<Return>', self.manual__on_p_set)
         self.frames['manual'].pwm_button.bind('<Button-1>', self.manual__on_p_set)
+
+        for graph in self.frames['manual'].graph_frame:
+            graph.axes = graph.figure.add_subplot()
+            graph.axes.set_xlabel('Time (s)')
+        
+        for graph in self.frames['auto'].graph_frame:
+            graph.axes = graph.figure.add_subplot()
+            graph.axes.set_xlabel('Time (s)')
 
         self.manual__init()
 
@@ -195,6 +206,7 @@ class Application(tk.Tk):
     
     def manual__on_stop(self):
         self.supply.setVoltage(0)
+        sleep(2)
         self.arduino.send_pwm(1000)
         self.cancel_update()
         self.supply.close()
@@ -288,6 +300,7 @@ class Application(tk.Tk):
         self._auto_handle = None
         self.cancel_update()
         self.supply.setVoltage(0)
+        sleep(2)
         self.arduino.send_pwm(1000)
         self.supply.close()
         self.arduino.close()
@@ -320,7 +333,7 @@ class Application(tk.Tk):
         if self._handle is not None:
             self.update_thread = Thread(target=self.update_db)
             self.update_thread.start()
-            self._handle = self.after(200, self.update_GUI)
+            self._handle = self.after(400, self.update_GUI)
         return
     
     def cancel_update(self):
@@ -339,5 +352,27 @@ class Application(tk.Tk):
         self.frames[self.current_frame].dash_rpm.config(text=self.model.db['rpm'])
         self.frames[self.current_frame].dash_thrust.config(text=self.model.db['thrust(gf)'])
         self.frames[self.current_frame].dash_power.config(text=self.model.power)
+        
+        for graph in self.frames[self.current_frame].graph_frame:
+            graph.axes.clear()
+            val = graph.param_value.get()
+            if val == 'Current':
+                graph.axes.set_ylabel('Current (A)')
+                graph.axes.set_title('Current vs Time')
+                graph.axes.plot(self.model.time_list, self.model.current_list)
+            elif val == 'Thrust':
+                graph.axes.set_ylabel('Thrust (gf)')
+                graph.axes.set_title('Thrust vs Time')
+                graph.axes.plot(self.model.time_list, self.model.thrust_list)
+            elif val == 'RPM':
+                graph.axes.set_ylabel('RPM')
+                graph.axes.set_title('RPM vs Time')
+                graph.axes.plot(self.model.time_list, self.model.rpm_list)
+            elif val == 'Power':
+                graph.axes.set_ylabel('Power (W)')
+                graph.axes.set_title('Power vs Time')
+                graph.axes.plot(self.model.time_list, self.model.power_list)
+            graph.canvas.draw()
+        
         #append to file
         self.model.append_dest_file()

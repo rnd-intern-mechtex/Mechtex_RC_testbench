@@ -22,6 +22,13 @@ class Model:
         
         self.auto_delay = None
         self.auto_pwm = None
+
+        # list for plotting graphs
+        self.time_list = []
+        self.current_list = []
+        self.power_list = []
+        self.thrust_list = []
+        self.rpm_list = []
     
     def update_efficiency(self):
         if self.db["thrust(gf)"] is None or self.db["power(W)"] is None:
@@ -47,10 +54,28 @@ class Model:
         self.db['current(A)'] = float(self.current[:-3])
         self.db['power(W)'] = float(self.power[:-3])
     
+    def append_graph_lists(self):
+        self.time_list.append(self.db['time(s)'])
+        self.power_list.append(self.db['power(W)'])
+        self.current_list.append(self.db['current(A)'])
+        self.rpm_list.append(self.db['rpm'])
+        self.thrust_list.append(self.db['thrust(gf)'])
+
+        if len(self.time_list) == 50:
+            self.time_list = self.time_list[1:]
+            self.current_list = self.current_list[1:]
+            self.power_list = self.power_list[1:]
+            self.thrust_list = self.thrust_list[1:]
+            self.rpm_list = self.rpm_list[1:]
+
     def update_db(self):
+        print('Starting update')
         self.update_arduino_values()
         self.update_supply_values()
         self.update_efficiency()
+        print('starting graph update')
+        self.append_graph_lists()
+        print('end')
         
     
     def append_dest_file(self):

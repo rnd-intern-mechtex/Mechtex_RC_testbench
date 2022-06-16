@@ -1,9 +1,17 @@
 import tkinter as tk
 from tkinter import ttk
 
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg,
+    NavigationToolbar2Tk
+)
+
 class SetupPage(ttk.Frame):
     # !!! Add controller
-    def __init__(self, container, controller):
+    def __init__(self, container):
         super().__init__(container)
         
         # required variables
@@ -232,10 +240,11 @@ class SetupPage(ttk.Frame):
 
 class ManualPage(ttk.LabelFrame):
     # !!! Add controller
-    def __init__(self, container, controller):
+    def __init__(self, container):
         super().__init__(container)
         self.grid_rowconfigure([2, 3], weight=1)
         self.grid_columnconfigure([2, 6], weight=1)
+        self.grid_rowconfigure([5, 6], weight=2)
         
         # -------------------------------------------------------------------------------
         # Creating all Manual Frames
@@ -329,6 +338,7 @@ class ManualPage(ttk.LabelFrame):
         self.dashboard_values.append(self.dash_rpm)
         self.dash_power = ttk.Label(self.dashboard, text = '')
         self.dash_power.grid(row=12, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_power)
         
         
         # -------------------------------------------------------------------------------
@@ -341,6 +351,7 @@ class ManualPage(ttk.LabelFrame):
         self.back_button = ttk.Button(self.start_frame, text='BACK TO SETUP')
         self.back_button.grid(row=0, column=6, padx=2, pady=2, ipadx=5, ipady=5)
         
+
         # -------------------------------------------------------------------------------
         # Adding all manual frames to grid
         # -------------------------------------------------------------------------------
@@ -348,16 +359,21 @@ class ManualPage(ttk.LabelFrame):
         self.pwm_frame.grid(row=2, column=2, sticky=tk.NSEW)
         self.voltage_frame.grid(row=3, column=2, sticky=tk.NSEW)
         self.dashboard.grid(row=2, column=6, rowspan=2, sticky=tk.NSEW)
+        self.graph_frame = [GraphFrame(self) for _ in range(2)]
+        self.graph_frame[0].grid(row=5, column=2, columnspan=5, sticky=tk.NSEW)
+        self.graph_frame[1].grid(row=6, column=2, columnspan=5, sticky=tk.NSEW)
+
 
 
 class AutomatedPage(ttk.LabelFrame):
     
-    def __init__(self, container, controller):
+    def __init__(self, container):
         super().__init__(container)
         
         self.required_voltage = tk.DoubleVar()
         
         self.grid_rowconfigure(1, weight=1)
+        
         self.grid_columnconfigure([2, 4], weight=1)
         
         # -------------------------------------------------------------------------------
@@ -375,16 +391,15 @@ class AutomatedPage(ttk.LabelFrame):
         self.voltage_entry = ttk.Entry(self.start_frame, width=20, textvariable=self.required_voltage)
         self.voltage_entry.grid(row=0, column=3, padx=2, pady=2)
         self.start_button = ttk.Button(self.start_frame, text='START')
-        self.start_button.grid(row=0, column=4, padx=2, pady=2, ipadx=5, ipady=5)
+        self.start_button.grid(row=0, column=4, padx=2, pady=2, ipadx=2, ipady=2)
         self.stop_button = ttk.Button(self.start_frame, text='STOP')
-        self.stop_button.grid(row=0, column=6, padx=2, pady=2, ipadx=5, ipady=5)
+        self.stop_button.grid(row=0, column=6, padx=2, pady=2, ipadx=2, ipady=2)
         self.back_button = ttk.Button(self.start_frame, text='BACK TO SETUP')
-        self.back_button.grid(row=0, column=8, padx=2, pady=2, ipadx=5, ipady=5)
+        self.back_button.grid(row=0, column=8, padx=2, pady=2, ipadx=2, ipady=2)
         
         # -------------------------------------------------------------------------------
         # Creating message frame
         # -------------------------------------------------------------------------------
-        self.msg_frame.grid_rowconfigure([0, 1], weight=1)
         self.msg_frame.grid_columnconfigure(0, weight=1)
         
         self.pwm_label = ttk.Label(self.msg_frame, text='')
@@ -395,7 +410,6 @@ class AutomatedPage(ttk.LabelFrame):
         # Creating dashboard
         # -------------------------------------------------------------------------------
         # configuring rows and columns
-        self.dashboard.grid_rowconfigure([2, 4, 6, 8, 10, 12], weight=1)
         self.dashboard.grid_columnconfigure([2, 4], weight=1)
         
         ttk.Label(self.dashboard, text='Voltage: ').grid(
@@ -434,6 +448,7 @@ class AutomatedPage(ttk.LabelFrame):
         self.dashboard_values.append(self.dash_rpm)
         self.dash_power = ttk.Label(self.dashboard, text = '')
         self.dash_power.grid(row=12, column=4, padx=2, pady=2)
+        self.dashboard_values.append(self.dash_power)
         
         # -------------------------------------------------------------------------------
         # Adding all auto frames to grid
@@ -441,13 +456,31 @@ class AutomatedPage(ttk.LabelFrame):
         self.start_frame.grid(row=0, column=2, sticky=tk.NSEW)
         self.msg_frame.grid(row=1, column=2, sticky=tk.NSEW)
         self.dashboard.grid(row=1, column=4, sticky=tk.NSEW)
+        self.graph_frame = [GraphFrame(self) for _ in range(2)]
+        self.graph_frame[0].grid(row=5, column=2, columnspan=3, sticky=tk.NSEW)
+        self.graph_frame[1].grid(row=6, column=2, columnspan=3, sticky=tk.NSEW)
         
 
 class GraphFrame(ttk.Frame):
     def __init__(self, container):
         super().__init__(container)
-        
-    
+        self.param_list = ['Current', 'Power', 'RPM', 'Thrust']
+
+        self.param_value = tk.StringVar()
+
+        self.control_frame = ttk.Frame(self)
+        self.graph_frame = ttk.Frame(self)
+
+        self.param_menu = ttk.OptionMenu(self.control_frame, self.param_value, self.param_list[0], *self.param_list)
+        self.param_menu.grid(row=0, column=0)
+
+        self.figure = Figure(figsize=(5, 1.5), dpi=100, layout='constrained')
+        self.canvas = FigureCanvasTkAgg(self.figure, self.graph_frame)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self.graph_frame)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        self.control_frame.pack(fill=tk.X, expand=True)
+        self.graph_frame.pack(fill=tk.X, expand=True)
         
 
 
