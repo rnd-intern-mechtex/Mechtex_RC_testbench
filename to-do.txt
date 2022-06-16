@@ -1,2 +1,4 @@
-try threading for .after()
-add code for matplotlib
+add provision to save previous data
+validation
+modify Arduino for numPoles
+look at grid configs
