@@ -48,6 +48,9 @@ class Application(tk.Tk):
         self.frames['setup'].button_auto.config(command=self.setup__on_auto)
         self.frames['setup'].button_manual.config(command=self.setup__on_manual)
 
+        self.frames['setup'].button_manual.config(state=tk.DISABLED)
+        self.frames['setup'].button_auto.config(state=tk.DISABLED)
+
         # -------------------------------------------------------------------------------
         # MANUAL VIEW WIDGETS CONFIGURATION
         # -------------------------------------------------------------------------------
@@ -139,10 +142,17 @@ class Application(tk.Tk):
         self.frames["setup"].destination_folder.set(fd.askdirectory())
 
     def setup__on_save(self):
-        # check if all com ports are different
-        self.data = self.frames["setup"].getData()
-        self.frames["setup"].button_auto.config(state=tk.NORMAL)
-        self.frames["setup"].button_manual.config(state=tk.NORMAL)
+        if self.frames['setup'].validate_page():
+            self.data = self.frames["setup"].getData()
+            if self.data['source_file'] != '':
+                self.frames["setup"].button_auto.config(state=tk.NORMAL)
+            else:
+                self.frames['setup'].button_auto.config(state=tk.DISABLED)
+            self.frames["setup"].button_manual.config(state=tk.NORMAL)
+        
+        else:
+            self.frames['setup'].button_auto.config(state=tk.DISABLED)
+            self.frames["setup"].button_manual.config(state=tk.DISABLED)
     
     def setup__on_manual(self):
         self.current_frame = "manual"
@@ -277,7 +287,7 @@ class Application(tk.Tk):
         self.supply = PowerSupply(self.data['supply_port'])
         self.supply.setOVP(self.data['max_voltage'])
         self.supply.setCurrentLimit("{0:.3f}".format(self.data["max_current"]/1000))
-        self.supply.setVoltage(self.frames['auto'].required_voltage.get())
+        self.supply.setVoltage(float(self.frames['auto'].voltage_entry.get()))
         self.supply.turnOutputON()
         # Open arduino port
         self.arduino = Arduino(self.data['arduino_port'], self.data['num_readings'])

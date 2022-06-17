@@ -1,5 +1,11 @@
+import os
 import tkinter as tk
 from tkinter import ttk
+from turtle import width
+
+from numpy import column_stack
+
+from mechtex_rc_testbench.widgets import FloatEntry, IntEntry
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -15,17 +21,12 @@ class SetupPage(ttk.Frame):
         super().__init__(container)
         
         # required variables
-        self.supply_port = tk.StringVar()
-        self.arduino_port = tk.StringVar()
-        self.numPoles = tk.IntVar()
-        self.numReadings = tk.IntVar()
-        self.maxV = tk.DoubleVar()
-        self.maxI = tk.DoubleVar()
-        self.maxT = tk.DoubleVar()
-        self.maxN = tk.DoubleVar()
-        self.source_filename = tk.StringVar()
-        self.destination_folder = tk.StringVar()
-        self.destination_filename = tk.StringVar()
+        self.supply_port = tk.StringVar(self)
+        self.arduino_port = tk.StringVar(self)
+
+        self.source_filename = tk.StringVar(self)
+        self.destination_folder = tk.StringVar(self)
+        self.destination_filename = tk.StringVar(self, '.csv')
         
         # configuring rows and columns for frames
         self.grid_rowconfigure([2, 4, 6, 8], weight=2)
@@ -61,9 +62,9 @@ class SetupPage(ttk.Frame):
         ttk.Label(self.param_inner_fr[1], text='Number of Readings: ').grid(
             row=0, column=0, padx=2, pady=2
         )
-        self.numPoles_entry = ttk.Entry(self.param_inner_fr[0], width=15, textvariable=self.numPoles)
+        self.numPoles_entry = IntEntry(self.param_inner_fr[0], width=15)
         self.numPoles_entry.grid(row=0, column=1, padx=2, pady=2)
-        self.numReadings_entry = ttk.Entry(self.param_inner_fr[1], width=15, textvariable=self.numReadings)
+        self.numReadings_entry = IntEntry(self.param_inner_fr[1], width=15)
         self.numReadings_entry.grid(row=0, column=1, padx=2, pady=2)
         ttk.Label(self.param_inner_fr[1], text='(for averaging)').grid(row=1, column=0)
         self.param_inner_fr[0].grid(row=0, column=0, padx=2, pady=2)
@@ -107,13 +108,13 @@ class SetupPage(ttk.Frame):
         ttk.Label(self.safety_inner_fr[3], text='Max Speed (rpm): ').grid(
             row=0, column=0, padx=2, pady=2
         )
-        self.maxV_entry = ttk.Entry(self.safety_inner_fr[0], width=20, textvariable=self.maxV)
+        self.maxV_entry = FloatEntry(self.safety_inner_fr[0], width=20)
         self.maxV_entry.grid(row=0, column=1, padx=2, pady=2)
-        self.maxI_entry = ttk.Entry(self.safety_inner_fr[1], width=20, textvariable=self.maxI)
+        self.maxI_entry = FloatEntry(self.safety_inner_fr[1], width=20)
         self.maxI_entry.grid(row=0, column=1, padx=2, pady=2)
-        self.maxT_entry = ttk.Entry(self.safety_inner_fr[2], width=20, textvariable=self.maxT)
+        self.maxT_entry = FloatEntry(self.safety_inner_fr[2], width=20)
         self.maxT_entry.grid(row=0, column=1, padx=2, pady=2)
-        self.maxN_entry = ttk.Entry(self.safety_inner_fr[3], width=20, textvariable=self.maxN)
+        self.maxN_entry = FloatEntry(self.safety_inner_fr[3], width=20)
         self.maxN_entry.grid(row=0, column=1, padx=2, pady=2)
         self.safety_inner_fr[0].grid(row=0, column=0, padx=2, pady=2)
         self.safety_inner_fr[1].grid(row=0, column=1, padx=2, pady=2)
@@ -172,14 +173,13 @@ class SetupPage(ttk.Frame):
         # -------------------------------------------------------------------------------
         # configuring rows and columns
         self.start_frame.grid_rowconfigure(0, weight=1)
-        self.start_frame.grid_columnconfigure(0, weight=1)
         
         self.button_save = ttk.Button(self.start_frame, text='Save')
-        self.button_save.grid(row=0, column=0, padx=2, pady=2)
+        self.button_save.grid(row=0, column=1, padx=2, pady=2)
         self.button_auto = ttk.Button(self.start_frame, text='Automated Testing')
-        self.button_auto.grid(row=0, column=1, padx=2, pady=2)
+        self.button_auto.grid(row=0, column=2, padx=2, pady=2)
         self.button_manual = ttk.Button(self.start_frame, text='Manual Testing')
-        self.button_manual.grid(row=0, column=2, padx=2, pady=2)
+        self.button_manual.grid(row=0, column=3, padx=2, pady=2)
         
         
         
@@ -221,21 +221,74 @@ class SetupPage(ttk.Frame):
             pady=2,
             sticky=tk.E
         )
+        self.error_label = ttk.Label(self, text='')
+        self.error_label.grid(
+            row=12, column=2, padx=2, pady=2, sticky=tk.EW
+        )
         
     def getData(self):
         data = {}
-        data['num_poles'] = self.numPoles.get()
-        data['num_readings'] = self.numReadings.get()
+        data['num_poles'] = int(self.numPoles_entry.get())
+        data['num_readings'] = int(self.numReadings_entry.get())
         data['supply_port'] = self.supply_port.get()
         data['arduino_port'] = self.arduino_port.get()
-        data['max_voltage'] = self.maxV.get()
-        data['max_current'] = self.maxI.get()
-        data['max_thrust'] = self.maxT.get()
-        data['max_rpm'] = self.maxN.get()
+        data['max_voltage'] = float(self.maxV_entry.get())
+        data['max_current'] = float(self.maxI_entry.get())
+        data['max_thrust'] = float(self.maxT_entry.get())
+        data['max_rpm'] = float(self.maxN_entry.get())
         data['source_file'] = self.source_filename.get()
         data['dest_file'] = self.destination_folder.get() + '/' + self.destination_filename.get() 
         
         return data
+
+    def validate_page(self):
+        if self.numPoles_entry.get() == '':
+            self.show_error('Number of Poles')
+            self.after(3000, self._clear_error_label)
+            return False
+        elif self.numReadings_entry.get() == '':
+            self.show_error('Number of Readings')
+            self.after(3000, self._clear_error_label)
+            return False
+        elif self.supply_port.get() == '' or self.arduino_port.get() == '':
+            self.error_label.config(text='!!! Select Ports!')
+            self.after(3000, self._clear_error_label)
+            return False
+        elif self.supply_port.get() == self.arduino_port.get():
+            self.error_label.config(text='!!! Power supply and arduino ports can not be the same ...')
+            self.after(3000, self._clear_error_label)
+            return False
+        elif self.maxI_entry.get() == '' or self.maxI_entry.get() == '' or self.maxN_entry.get() == '' or self.maxT_entry.get() == '':
+            self.show_error('!!! Safety Parameters')
+            self.after(3000, self._clear_error_label)
+            return False
+        elif not os.path.isdir(self.destination_folder.get()):
+            self.error_label.config(text='!!! Destination folder does not exist ...')
+            self.after(3000, self._clear_error_label)
+            return False
+            self.after(3000, self._clear_error_label)
+        elif self.destination_filename.get() == '.csv' or self.destination_filename.get()[-4:] != '.csv':
+            self.error_label.config(text='!!! Enter valid name for destination file')
+            self.after(3000, self._clear_error_label)
+            return False
+        elif self.source_filename.get() != '':
+            if not os.path.isfile(self.source_filename.get()):
+                self.error_label.config(text='!!! Enter valid path for source file ...')
+                self.after(3000, self._clear_error_label)
+                return False
+            elif self.source_filename.get()[-4:] != '.csv':
+                self.error_label.config(text='!!! Source file must be a .csv file ...')
+                self.after(3000, self._clear_error_label)
+                return False
+        # check here if the ports are configured correctly
+
+        return True
+
+    def show_error(self, ref):
+        self.error_label.config(text=f'!!! {ref} can not be empty')
+
+    def _clear_error_label(self):
+        self.error_label.config(text='')
 
 
 class ManualPage(ttk.LabelFrame):
@@ -270,7 +323,7 @@ class ManualPage(ttk.LabelFrame):
             orient='horizontal'
         )
         self.pwm_slider.grid(row=0, column=0, columnspan=2, padx=2, pady=2, sticky=tk.NS)
-        self.pwm_entry = ttk.Entry(self.pwm_frame, width=10)
+        self.pwm_entry = IntEntry(self.pwm_frame, width=10)
         self.pwm_entry.grid(row=1, column=0, padx=2, pady=2, sticky=tk.E)
         self.pwm_button = ttk.Button(self.pwm_frame, text='Set')
         self.pwm_button.grid(row=1, column=1, padx=2, pady=2, sticky=tk.W)
@@ -290,7 +343,7 @@ class ManualPage(ttk.LabelFrame):
             orient='horizontal'
         )
         self.voltage_slider.grid(row=0, column=0, columnspan=2, padx=2, pady=2, sticky=tk.NS)
-        self.voltage_entry = ttk.Entry(self.voltage_frame, width=10)
+        self.voltage_entry = FloatEntry(self.voltage_frame, width=10)
         self.voltage_entry.grid(row=1, column=0, padx=2, pady=2, sticky=tk.E)
         self.voltage_button = ttk.Button(self.voltage_frame, text='Set')
         self.voltage_button.grid(row=1, column=1, padx=2, pady=2, sticky=tk.W)
@@ -370,8 +423,6 @@ class AutomatedPage(ttk.LabelFrame):
     def __init__(self, container):
         super().__init__(container)
         
-        self.required_voltage = tk.DoubleVar()
-        
         self.grid_rowconfigure(1, weight=1)
         
         self.grid_columnconfigure([2, 4], weight=1)
@@ -388,7 +439,7 @@ class AutomatedPage(ttk.LabelFrame):
         # -------------------------------------------------------------------------------
         self.voltage_label = ttk.Label(self.start_frame, text='Enter voltage: ')
         self.voltage_label.grid(row=0, column=2, padx=2, pady=2, ipadx=2, ipady=2)
-        self.voltage_entry = ttk.Entry(self.start_frame, width=20, textvariable=self.required_voltage)
+        self.voltage_entry = FloatEntry(self.start_frame, width=20)
         self.voltage_entry.grid(row=0, column=3, padx=2, pady=2)
         self.start_button = ttk.Button(self.start_frame, text='START')
         self.start_button.grid(row=0, column=4, padx=2, pady=2, ipadx=2, ipady=2)
