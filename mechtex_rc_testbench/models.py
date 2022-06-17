@@ -69,13 +69,10 @@ class Model:
             self.rpm_list = self.rpm_list[1:]
 
     def update_db(self):
-        print('Starting update')
         self.update_arduino_values()
         self.update_supply_values()
         self.update_efficiency()
-        print('starting graph update')
         self.append_graph_lists()
-        print('end')
         
     
     def append_dest_file(self):
@@ -95,8 +92,6 @@ class Model:
             for col in csvreader:
                 self.auto_pwm.append(col['PWM'])
                 self.auto_delay.append(col['Delay'])
-        print(self.auto_pwm)
-        print(self.auto_delay)
 
 class PowerSupply(serial.Serial):
     def __init__(self, comPort):

@@ -15,7 +15,7 @@ class Application(tk.Tk):
         super().__init__(*args, **kwargs)
         self.withdraw()     # hides app until proper init
         self.title('Mechtex RC Testbench')
-        
+        self.state('zoomed')
         self.port_list = []
         self._handle = None
         self._auto_handle = None
@@ -328,7 +328,6 @@ class Application(tk.Tk):
                 if i==0:
                     self.frames[self.current_frame].delay_label.config(text='STARTING ...')
                     sleep(8)
-                print('Entered autoloop')
                 self.arduino.send_pwm(self.model.auto_pwm[i])
                 pwm_text = f'PWM value {self.model.auto_pwm[i]} sent'
                 delay_text = f'Waiting for {self.model.auto_delay[i]}s'
