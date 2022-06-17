@@ -1,9 +1,6 @@
 import os
 import tkinter as tk
 from tkinter import ttk
-from turtle import width
-
-from numpy import column_stack
 
 from mechtex_rc_testbench.widgets import FloatEntry, IntEntry
 
