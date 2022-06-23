@@ -19,6 +19,11 @@ class Model:
         self.db["thrust(gf)"] = None
         self.db["power(W)"] = None
         self.db["efficiency"] = None    # ???
+
+        self.old_db = {}
+        self.old_db['voltage(V)'] = None
+        self.old_db['current(A)'] = None
+        self.old_db['power(W)'] = None
         
         self.auto_delay = None
         self.auto_pwm = None
@@ -72,11 +77,23 @@ class Model:
         if self.db['pwm'] == 'fail' or self.db['thrust(gf)'] == 'fail' or self.db['rpm'] == 'fail':
             return 'arduino'
         self.update_supply_values()
-        if self.voltage == 'fail' or self.current == 'fail' or self.power] == 'fail':
+        if self.voltage == 'fail' or self.current == 'fail' or self.power == 'fail':
             return 'supply'
-        self.db['voltage(V)'] = float(self.voltage[:-3])
-        self.db['current(A)'] = float(self.current[:-3])
-        self.db['power(W)'] = float(self.power[:-3])
+        try:
+            self.db['voltage(V)'] = float(self.voltage[:-3])
+            self.old_db['voltage(V)'] = self.db['voltage(V)']
+        except ValueError:
+            self.db['voltage(V)'] = self.old_db['voltage(V)']
+        try:
+            self.db['current(A)'] = float(self.current[:-3])
+            self.old_db['current(A)'] = self.db['current(A)']
+        except ValueError:
+            self.db['current(A)'] = self.old_db['current(A)']
+        try:
+            self.db['power(W)'] = float(self.power[:-3])
+            self.old_db['power(W)'] = self.db['power(W)']
+        except ValueError:
+            self.db['power(W)'] = self.old_db['power(W)']
 
         self.update_efficiency()
         self.append_graph_lists()
@@ -161,10 +178,12 @@ class PowerSupply(serial.Serial):
     def getActualVoltage(self):
         # returns the actual voltage
         if self.isOpen():
-            self.write(b'MEAS:VOLT?')
-            return self._getResponse()
-        else:
-            return 'fail'
+            try:
+                self.write(b'MEAS:VOLT?')
+                return self._getResponse()
+            except serial.SerialException as e:
+                if e.errno == 13:
+                    return 'fail'
     
     # current commands
     def setCurrentLimit(self, value):
@@ -177,18 +196,21 @@ class PowerSupply(serial.Serial):
         return self._getResponse()
     
     def getActualCurrent(self):
-        if self.isOpen():
+        try:
             self.write(b'MEAS:CURR?')
             return self._getResponse()
-        else:
-            return 'fail'
-    
+        except serial.SerialException as e:
+            if e.errno == 13:
+                return 'fail'
+        
     def getPower(self):
         if self.isOpen():
-            self.write(b'MEAS:POW?')
-            return self._getResponse()
-        else:
-            return 'fail'
+            try:
+                self.write(b'MEAS:POW?')
+                return self._getResponse
+            except serial.SerialException as e:
+                if e.errno == 13:
+                    return'fail'
     
     # Private methods
     def _getResponse(self):
@@ -201,46 +223,59 @@ class PowerSupply(serial.Serial):
 
 
 class Arduino(serial.Serial):
-    def __init__(self, comPort, avgValue):
+    def __init__(self, comPort):
         super().__init__(comPort)
         self.baudrate = 9600
         self.stopbits = 1
         self.bytesize = 8
         self.parity = 'N'
-        self.averaging_value = avgValue
-        time.sleep(3)
         
-        self.send_avgValue()
     
-    def send_avgValue(self):
-        self.write(bytes(f'A{self.averaging_value}\n', encoding='ASCII'))
+    def send_avgValue(self, value):
+        try:
+            self.write(bytes(f'A{value}\n', encoding='ASCII'))
+            return False
+        except serial.SerialException as e:
+            if e.errno == 13:
+                return 'arduino'
     
     def send_pwm(self, pwm_value):
-        self.write(bytes(f'P{pwm_value}\n', encoding='ASCII'))
+        try:
+            self.write(bytes(f'P{pwm_value}\n', encoding='ASCII'))
+            return False
+        except serial.SerialException as e:
+            if e.errno == 13:
+                return 'arduino'
     
     def getPwm(self):
         if self.isOpen():
-            self.write(b'X\n')
-            response = self.readline().decode('utf-8')
-            if response[0] == 'P':
-                return int(response[1:-1])
-        else:
-            return 'fail'
+            try:
+                self.write(b'X\n')
+                response = self.readline().decode('utf-8')
+                if response[0] == 'P':
+                    return int(response[1:-1])
+            except serial.SerialException as e:
+                if e.errno == 13:
+                    return 'fail'
             
     def getThrust(self):
         if self.isOpen():
-            self.write(b'T\n')
-            response = self.readline().decode('utf-8')
-            if response[0] == 'T':
-                return float(response[1:-1])
-        else:
-            return 'fail'
-            
+            try:
+                self.write(b'T\n')
+                response = self.readline().decode('utf-8')
+                if response[0] == 'T':
+                    return float(response[1:-1])
+            except serial.SerialException as e:
+                if e.errno == 13:
+                    return 'fail'
+
     def getRpm(self):
         if self.isOpen():
-            self.write(b'R\n')
-            response = self.readline().decode('utf-8')
-            if response[0] == 'R':
-                return int(response[1:-1])
-        else:
-            return 'fail'
+            try:
+                self.write(b'R\n')
+                response = self.readline().decode('utf-8')
+                if response[0] == 'R':
+                    return int(response[1:-1])
+            except serial.SerialException as e:
+                if e.errno == 13:
+                    return 'fail'

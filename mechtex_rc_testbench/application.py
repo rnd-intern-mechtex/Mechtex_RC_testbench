@@ -204,8 +204,17 @@ class Application(tk.Tk):
         self.supply.setVoltage(0)
         self.supply.turnOutputON()
         # Open arduino port
-        self.arduino = Arduino(self.data['arduino_port'], self.data['num_readings'])
-        self.arduino.send_pwm(1000)
+        self.arduino = Arduino(self.data['arduino_port'])
+        sleep(2)
+        self._handle_dict['error'] = self.arduino.send_avgValue(self.data['num_readings'])
+        if self._handle_dict['error'] is not False:
+            print('Problem with num_readings')
+            self._handle_dict['stop'] = True
+            self.update_GUI()
+        self._handle_dict['error'] = self.arduino.send_pwm(1000)
+        if self._handle_dict['error'] is not False:
+            self._handle_dict['stop'] = True
+            self.update_GUI()
         self.model = Model(self.data['source_file'], self.data['dest_file'], self.supply, self.arduino)
 
         # Update GUI
@@ -222,14 +231,21 @@ class Application(tk.Tk):
     
     def manual__on_stop(self):
         self._handle_dict['stop'] = True
+        print(self._handle_dict['stop'])
 
     def manual__stop_process(self):
-        self.supply.setVoltage(0)
-        sleep(2)
-        self.arduino.send_pwm(1000)
-        self.cancel_update()
-        self.supply.close()
-        self.arduino.close()
+        
+        # cancel update again?
+        if self.supply.isOpen():
+            self.supply.reset_input_buffer()
+            print('buffer reset')
+            while float(self.supply.getVoltage()[:-3]) != 0:
+                self.supply.setVoltage(0)
+            self.supply.turnOutputOFF()
+            self.supply.close()
+        if self.arduino.isOpen():
+            self.arduino.send_pwm(1000)
+            self.arduino.close()
 
         self.manual__init()
     
@@ -321,12 +337,17 @@ class Application(tk.Tk):
 
     def auto__stop_process(self):
         self._handle_dict['auto'] = None
-        self.cancel_update()
-        self.supply.setVoltage(0)
-        sleep(2)
-        self.arduino.send_pwm(1000)
-        self.supply.close()
-        self.arduino.close()
+        #self.cancel_update()
+        if self.supply.isOpen():
+            self.supply.reset_input_buffer()
+            while float(self.supply.getVoltage()[:-3]) != 0:
+                self.supply.setVoltage(0)
+            self.supply.turnOutputOFF()
+            self.supply.close()
+        if self.arduino.isOpen():
+            self.arduino.send_pwm(1000)
+            self.arduino.close()
+
         self.frames[self.current_frame].pwm_label.config(text='')
         self.frames[self.current_frame].delay_label.config(text='')
         self.auto__init()
@@ -353,14 +374,33 @@ class Application(tk.Tk):
     # Common functions
     def update_GUI(self):
         if self._handle_dict['stop'] is True:
+            print('entered update')
             self.cancel_update()
+            print('cancelled')
             if self.current_frame == 'manual':
                 self.manual__stop_process()
             elif self.current_frame == 'auto':
                 self.auto__stop_process()
             if self._handle_dict['error'] is not False:
                 # display error message here
-                pass
+                if self._handle_dict['error'] == 'arduino':
+                    messagebox.showerror('Port Error!', 'Arduino Port closed unexpectedly. Process Stopped.')
+                elif self._handle_dict['error'] == 'supply':
+                    messagebox.showerror('Port Error!', 'Power Supply Port closed unexpectedly. Process Stopped.')
+                elif self._handle_dict['error'] == 'voltage':
+                    messagebox.showerror('Voltage limit exceeded. Process stopped.')
+                elif self._handle_dict['error'] == 'thrust':
+                    messagebox.showerror('Thrust limit exceeded. Process stopped.')
+                elif self._handle_dict['error'] == 'current':
+                    messagebox.showerror('Current limit exceeded. Process stopped.')
+                elif self._handle_dict['error'] == 'rpm':
+                    messagebox.showerror('RPM limit exceeded. Process stopped.')
+            self._handle_dict = {
+                'stop' : True,
+                'auto' : None,
+                'db' : None,
+                'error' : False
+            }
         elif self._handle_dict['db'] is not None:
             self.update_thread = Thread(target=self.update_db)
             self.update_thread.start()
@@ -378,9 +418,9 @@ class Application(tk.Tk):
         self._handle_dict['error'] = self.model.update_db()
         if self._handle_dict['error'] is not False:
             if self._handle_dict['stop'] is not True:
-                # show error message
                 self._handle_dict['stop'] = True
             else:
+                self._handle_dict['error'] = False
                 return
         
         self.frames[self.current_frame].dash_voltage.config(text=self.model.voltage)
@@ -390,25 +430,28 @@ class Application(tk.Tk):
         self.frames[self.current_frame].dash_thrust.config(text=self.model.db['thrust(gf)'])
         self.frames[self.current_frame].dash_power.config(text=self.model.power)
 
-        if self.model.db['voltage(V)'] > self.data['max_voltage']:
+        #append to file
+        self.model.append_dest_file()
+
+        if self.model.db['voltage(V)'] >= self.data['max_voltage']:
             # stop process
             self._handle_dict['error'] = 'voltage'
             self._handle_dict['stop'] = True
             return
 
-        if self.model.db['thrust(gf)'] > self.data['max_thrust']:
+        if self.model.db['thrust(gf)'] >= self.data['max_thrust']:
             # stop process
             self._handle_dict['error'] = 'thrust'
             self._handle_dict['stop'] = True
             return
 
-        if self.model.db['rpm'] > self.data['max_rpm']:
+        if self.model.db['rpm'] >= self.data['max_rpm']:
             # stop process
             self._handle_dict['error'] = 'rpm'
             self._handle_dict['stop'] = True
             return
 
-        if self.model.db['current(A)']*1000 > self.data['max_current']:
+        if self.model.db['current(A)']*1000 >= self.data['max_current']:
             # stop process
             self._handle_dict['error'] = 'current'
             self._handle_dict['stop'] = True
@@ -437,6 +480,5 @@ class Application(tk.Tk):
                 graph.axes.set_title('Power vs Time')
                 graph.axes.plot(self.model.time_list, self.model.power_list)
             graph.canvas.draw()
-        
-        #append to file
-        self.model.append_dest_file()
+
+        return False
