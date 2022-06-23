@@ -40,19 +40,18 @@ class Model:
             self.db["efficiency"] = '-'
         
     def update_arduino_values(self):
-        self.arduino.reset_input_buffer()
+        if self.arduino.isOpen():
+            self.arduino.reset_input_buffer()
         self.db['pwm'] = self.arduino.getPwm()
         self.db['thrust(gf)'] = self.arduino.getThrust()
         self.db['rpm'] = self.arduino.getRpm()
-    
+        
     def update_supply_values(self):
-        self.supply.reset_input_buffer()
+        if self.supply.isOpen():
+            self.supply.reset_input_buffer()
         self.voltage = self.supply.getActualVoltage()
         self.current = self.supply.getActualCurrent()
         self.power = self.supply.getPower()
-        self.db['voltage(V)'] = float(self.voltage[:-3])
-        self.db['current(A)'] = float(self.current[:-3])
-        self.db['power(W)'] = float(self.power[:-3])
     
     def append_graph_lists(self):
         self.time_list.append(self.db['time(s)'])
@@ -70,9 +69,18 @@ class Model:
 
     def update_db(self):
         self.update_arduino_values()
+        if self.db['pwm'] == 'fail' or self.db['thrust(gf)'] == 'fail' or self.db['rpm'] == 'fail':
+            return 'arduino'
         self.update_supply_values()
+        if self.voltage == 'fail' or self.current == 'fail' or self.power] == 'fail':
+            return 'supply'
+        self.db['voltage(V)'] = float(self.voltage[:-3])
+        self.db['current(A)'] = float(self.current[:-3])
+        self.db['power(W)'] = float(self.power[:-3])
+
         self.update_efficiency()
         self.append_graph_lists()
+        return False
         
     
     def append_dest_file(self):
@@ -152,8 +160,11 @@ class PowerSupply(serial.Serial):
     
     def getActualVoltage(self):
         # returns the actual voltage
-        self.write(b'MEAS:VOLT?')
-        return self._getResponse()
+        if self.isOpen():
+            self.write(b'MEAS:VOLT?')
+            return self._getResponse()
+        else:
+            return 'fail'
     
     # current commands
     def setCurrentLimit(self, value):
@@ -166,12 +177,18 @@ class PowerSupply(serial.Serial):
         return self._getResponse()
     
     def getActualCurrent(self):
-        self.write(b'MEAS:CURR?')
-        return self._getResponse()
+        if self.isOpen():
+            self.write(b'MEAS:CURR?')
+            return self._getResponse()
+        else:
+            return 'fail'
     
     def getPower(self):
-        self.write(b'MEAS:POW?')
-        return self._getResponse()
+        if self.isOpen():
+            self.write(b'MEAS:POW?')
+            return self._getResponse()
+        else:
+            return 'fail'
     
     # Private methods
     def _getResponse(self):
@@ -202,20 +219,28 @@ class Arduino(serial.Serial):
         self.write(bytes(f'P{pwm_value}\n', encoding='ASCII'))
     
     def getPwm(self):
-        self.write(b'X\n')
-        response = self.readline().decode('utf-8')
-        if response[0] == 'P':
-            return int(response[1:-1])
-        
-    
+        if self.isOpen():
+            self.write(b'X\n')
+            response = self.readline().decode('utf-8')
+            if response[0] == 'P':
+                return int(response[1:-1])
+        else:
+            return 'fail'
+            
     def getThrust(self):
-        self.write(b'T\n')
-        response = self.readline().decode('utf-8')
-        if response[0] == 'T':
-            return float(response[1:-1])
-        
+        if self.isOpen():
+            self.write(b'T\n')
+            response = self.readline().decode('utf-8')
+            if response[0] == 'T':
+                return float(response[1:-1])
+        else:
+            return 'fail'
+            
     def getRpm(self):
-        self.write(b'R\n')
-        response = self.readline().decode('utf-8')
-        if response[0] == 'R':
-            return int(response[1:-1])
+        if self.isOpen():
+            self.write(b'R\n')
+            response = self.readline().decode('utf-8')
+            if response[0] == 'R':
+                return int(response[1:-1])
+        else:
+            return 'fail'

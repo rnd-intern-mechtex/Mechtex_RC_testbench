@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
+from tkinter import messagebox
 
 from serial.tools.list_ports import comports
 from threading import Thread
@@ -17,8 +18,12 @@ class Application(tk.Tk):
         self.title('Mechtex RC Testbench')
         self.state('zoomed')
         self.port_list = []
-        self._handle = None
-        self._auto_handle = None
+        self._handle_dict = {}
+        self._handle_dict['db'] = None
+        self._handle_dict['auto'] = None
+        self._handle_dict['stop'] = True
+        self._handle_dict['error'] = False
+
 
         # -------------------------------------------------------------------------------
         # Creating the main frame
@@ -192,6 +197,7 @@ class Application(tk.Tk):
         
         # Open power supply port, set OVP, current limit
         # turn output ON
+        self._handle_dict['stop'] = False
         self.supply = PowerSupply(self.data['supply_port'])
         self.supply.setOVP(self.data['max_voltage'])
         self.supply.setCurrentLimit("{0:.3f}".format(self.data["max_current"]/1000))
@@ -212,9 +218,12 @@ class Application(tk.Tk):
         self.frames["manual"].start_button.config(state=tk.DISABLED)
 
         self.start_time = perf_counter()
-        self._handle = self.after(1, self.update_GUI)
+        self._handle_dict['db'] = self.after(1, self.update_GUI)
     
     def manual__on_stop(self):
+        self._handle_dict['stop'] = True
+
+    def manual__stop_process(self):
         self.supply.setVoltage(0)
         sleep(2)
         self.arduino.send_pwm(1000)
@@ -284,6 +293,7 @@ class Application(tk.Tk):
     
     def auto__on_start(self):
         # Open power supply ports
+        self._handle_dict['stop'] = False
         self.supply = PowerSupply(self.data['supply_port'])
         self.supply.setOVP(self.data['max_voltage'])
         self.supply.setCurrentLimit("{0:.3f}".format(self.data["max_current"]/1000))
@@ -301,13 +311,16 @@ class Application(tk.Tk):
         self.model.read_input_file()
         
         self.start_time = perf_counter()
-        self._handle = self.after(1, self.update_GUI)
-        self._auto_handle = True
+        self._handle_dict['db'] = self.after(1, self.update_GUI)
+        self._handle_dict['auto'] = True
         self.auto_thread = Thread(target=self.auto__loop)
         self.auto_thread.start()
 
     def auto__on_stop(self):
-        self._auto_handle = None
+        self._handle_dict['stop'] = True
+
+    def auto__stop_process(self):
+        self._handle_dict['auto'] = None
         self.cancel_update()
         self.supply.setVoltage(0)
         sleep(2)
@@ -324,7 +337,7 @@ class Application(tk.Tk):
     
     def auto__loop(self):
         for i in range(len(self.model.auto_pwm)):
-            if self._auto_handle is not None:
+            if self._handle_dict['auto'] is not None:
                 if i==0:
                     self.frames[self.current_frame].delay_label.config(text='STARTING ...')
                     sleep(8)
@@ -339,21 +352,36 @@ class Application(tk.Tk):
 
     # Common functions
     def update_GUI(self):
-        if self._handle is not None:
+        if self._handle_dict['stop'] is True:
+            self.cancel_update()
+            if self.current_frame == 'manual':
+                self.manual__stop_process()
+            elif self.current_frame == 'auto':
+                self.auto__stop_process()
+            if self._handle_dict['error'] is not False:
+                # display error message here
+                pass
+        elif self._handle_dict['db'] is not None:
             self.update_thread = Thread(target=self.update_db)
             self.update_thread.start()
-            self._handle = self.after(400, self.update_GUI)
+            self._handle_dict['db'] = self.after(400, self.update_GUI)
         return
     
     def cancel_update(self):
-        if self._handle is not None:
-            self.after_cancel(self._handle)
-            self._handle = None
+        if self._handle_dict['db'] is not None:
+            self.after_cancel(self._handle_dict['db'])
+            self._handle_dict['db'] = None
 
     def update_db(self):
         # !!! Format time to 3 decimal places !!!
         self.model.db["time(s)"] = perf_counter() - self.start_time
-        self.model.update_db()
+        self._handle_dict['error'] = self.model.update_db()
+        if self._handle_dict['error'] is not False:
+            if self._handle_dict['stop'] is not True:
+                # show error message
+                self._handle_dict['stop'] = True
+            else:
+                return
         
         self.frames[self.current_frame].dash_voltage.config(text=self.model.voltage)
         self.frames[self.current_frame].dash_current.config(text=self.model.current)
@@ -361,10 +389,37 @@ class Application(tk.Tk):
         self.frames[self.current_frame].dash_rpm.config(text=self.model.db['rpm'])
         self.frames[self.current_frame].dash_thrust.config(text=self.model.db['thrust(gf)'])
         self.frames[self.current_frame].dash_power.config(text=self.model.power)
+
+        if self.model.db['voltage(V)'] > self.data['max_voltage']:
+            # stop process
+            self._handle_dict['error'] = 'voltage'
+            self._handle_dict['stop'] = True
+            return
+
+        if self.model.db['thrust(gf)'] > self.data['max_thrust']:
+            # stop process
+            self._handle_dict['error'] = 'thrust'
+            self._handle_dict['stop'] = True
+            return
+
+        if self.model.db['rpm'] > self.data['max_rpm']:
+            # stop process
+            self._handle_dict['error'] = 'rpm'
+            self._handle_dict['stop'] = True
+            return
+
+        if self.model.db['current(A)']*1000 > self.data['max_current']:
+            # stop process
+            self._handle_dict['error'] = 'current'
+            self._handle_dict['stop'] = True
+            return
         
         for graph in self.frames[self.current_frame].graph_frame:
             graph.axes.clear()
             val = graph.param_value.get()
+
+
+            
             if val == 'Current':
                 graph.axes.set_ylabel('Current (A)')
                 graph.axes.set_title('Current vs Time')

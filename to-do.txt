@@ -1,4 +1,2 @@
-add provision to save previous data
-validation
-modify Arduino for numPoles
+add try exception for float conversion error
 look at grid configs
