@@ -196,18 +196,19 @@ class PowerSupply(serial.Serial):
         return self._getResponse()
     
     def getActualCurrent(self):
-        try:
-            self.write(b'MEAS:CURR?')
-            return self._getResponse()
-        except serial.SerialException as e:
-            if e.errno == 13:
-                return 'fail'
-        
+        if self.isOpen():
+            try:
+                self.write(b'MEAS:CURR?')
+                return self._getResponse()
+            except serial.SerialException as e:
+                if e.errno == 13:
+                    return 'fail'
+            
     def getPower(self):
         if self.isOpen():
             try:
                 self.write(b'MEAS:POW?')
-                return self._getResponse
+                return self._getResponse()
             except serial.SerialException as e:
                 if e.errno == 13:
                     return'fail'
